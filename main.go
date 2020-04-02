@@ -31,6 +31,7 @@ WEBSITE:
 GLOBAL OPTIONS:
    -config [path-to-config-file]
    -token [slack-token]
+   -emoji
    -debug
    -help, -h
 `
@@ -41,6 +42,7 @@ var (
 	flgToken  string
 	flgDebug  bool
 	flgUsage  bool
+        flgEmoji  bool
 )
 
 func init() {
@@ -68,6 +70,13 @@ func init() {
 		"debug",
 		false,
 		"turn on debugging",
+	)
+
+	flag.BoolVar(
+		&flgEmoji,
+		"emoji",
+		false,
+		"turn on emojis",
 	)
 
 	flag.Usage = func() {
@@ -99,11 +108,16 @@ func main() {
 	ctx, err := context.CreateAppContext(
 		flgConfig, flgToken, flgDebug, VERSION, usage,
 	)
+
 	if err != nil {
 		termbox.Close()
 		log.Println(err)
 		os.Exit(0)
 	}
+
+        if flgEmoji {
+                ctx.Config.Emoji = true
+        }
 
 	// Initialize handlers
 	handlers.Initialize(ctx)
