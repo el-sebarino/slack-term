@@ -12,6 +12,7 @@ type View struct {
 	Config   *config.Config
 	Input    *components.Input
 	Chat     *components.Chat
+	Lobby    *components.Lobby
 	Channels *components.Channels
 	Threads  *components.Threads
 	Mode     *components.Mode
@@ -39,7 +40,10 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 	threads := components.CreateThreadsComponent(sideBarHeight)
 
 	// Chat: create the component
-	chat := components.CreateChatComponent(input.Par.Height)
+	chat := components.CreateChatComponent(input.Par.Height + termui.TermHeight()/2)
+
+	// Lobby: create the component
+	lobby := components.CreateLobbyComponent(input.Par.Height + chat.List.Height)
 
 	// Chat: fill the component
 	msgs, thr, err := svc.GetMessages(
@@ -82,6 +86,7 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 		Threads:  threads,
 		Chat:     chat,
 		Mode:     mode,
+		Lobby:    lobby,
 		Debug:    debug,
 	}
 
@@ -95,5 +100,6 @@ func (v *View) Refresh() {
 		v.Channels,
 		v.Threads,
 		v.Mode,
+		v.Lobby,
 	)
 }
