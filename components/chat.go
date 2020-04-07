@@ -287,6 +287,15 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 			termui.ColorDefault, termui.ColorDefault)...,
 		)
 
+		// Channel
+		// The message class doesn't have a way to keep track of channel
+		// so get the channelID and convert it.
+
+		cells = append(cells, termui.DefaultTxBuilder.Build(
+			msg.GetChannel(),
+			termui.ColorDefault, termui.ColorDefault)...
+		)
+
 		// Thread
 		cells = append(cells, termui.DefaultTxBuilder.Build(
 			msg.GetThread(),

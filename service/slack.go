@@ -483,6 +483,22 @@ func (s *SlackService) GetMessageByID(messageID string, channelID string) ([]com
 	return msgs, nil
 }
 
+// Use this to get the channel name by channel id since
+//  - want the message to also have the channe name
+//  - input slack event does not? have the name, only channel ID
+//  - Channels component is not? available here
+//  - its nice not to have to pass in the channel name
+func (s *SlackService) FindChannelName(channelID string) string {
+
+	for i, channel := range s.Conversations {
+		if channel.ID == channelID {
+			return s.Conversations[i].Name
+		}
+	}
+
+	return "???"
+}
+
 // CreateMessage will create a string formatted message that can be rendered
 // in the Chat pane.
 //
@@ -542,6 +558,7 @@ func (s *SlackService) CreateMessage(message slack.Message, channelID string) co
 		Messages:    make(map[string]components.Message),
 		Time:        time.Unix(intTime, 0),
 		Name:        name,
+		Channel:     s.FindChannelName(channelID),
 		Content:     parseMessage(s, message.Text),
 		StyleTime:   s.Config.Theme.Message.Time,
 		StyleThread: s.Config.Theme.Message.Thread,

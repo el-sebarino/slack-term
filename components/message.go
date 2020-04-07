@@ -25,6 +25,8 @@ type Message struct {
 	Messages map[string]Message
 
 	Time    time.Time
+	// Filled in at CreateMessage in event
+	Channel string
 	Thread  string
 	Name    string
 	Content string
@@ -39,7 +41,7 @@ type Message struct {
 
 func (m Message) GetTime() string {
 	return fmt.Sprintf(
-		"[[%s]](%s) ",
+		"[%s](%s) ",
 		m.Time.Format(m.FormatTime),
 		m.StyleTime,
 	)
@@ -53,10 +55,20 @@ func (m Message) GetThread() string {
 }
 
 func (m Message) GetName() string {
-	return fmt.Sprintf("[<%s>](%s) ",
+	return fmt.Sprintf("[%s](%s): ",
 		m.Name,
 		m.colorizeName(m.StyleName),
 	)
+}
+
+func (m Message) GetChannel() string {
+	if m.Channel == "" {
+		return fmt.Sprintf("")
+	} else {
+		return fmt.Sprintf("[%s] ",
+		m.Channel,
+		)
+	}
 }
 
 func (m Message) GetContent() string {
