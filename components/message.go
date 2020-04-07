@@ -25,7 +25,7 @@ type Message struct {
 	Messages map[string]Message
 
 	Time    time.Time
-	// Filled in at CreateMessage in event
+
 	Channel string
 	Thread  string
 	Name    string

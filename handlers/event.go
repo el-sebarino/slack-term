@@ -348,16 +348,25 @@ func actionSend(ctx *context.AppContext) {
 		// Send message
 		if !isCmd {
 			if ctx.Focus == context.ChatFocus {
+				// Send a message to channel of most recent message
+				channelName := ctx.View.Chat.GetLastMessage().Channel
+				channelID := ctx.Service.FindChannelID(channelName)
 				err := ctx.Service.SendMessage(
-					ctx.View.Channels.ChannelItems[ctx.View.Channels.SelectedChannel].ID,
+					channelID,
 					message,
 				)
 				if err != nil {
 					ctx.View.Debug.Println(
 						err.Error(),
 					)
+					ctx.View.Debug.Println(
+						"channel name: " + channelName,
+					)
+				} else {
+					ctx.View.Debug.Println(
+						"sent message to " + channelName + " (" +channelID+")",
+					)
 				}
-
 			}
 
 			if ctx.Focus == context.ThreadFocus {

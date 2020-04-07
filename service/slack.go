@@ -499,6 +499,17 @@ func (s *SlackService) FindChannelName(channelID string) string {
 	return "???"
 }
 
+func (s *SlackService) FindChannelID(channelName string) string {
+
+	for i, channel := range s.Conversations {
+		if channel.Name == channelName {
+			return s.Conversations[i].ID
+		}
+	}
+
+	return "???"
+}
+
 // CreateMessage will create a string formatted message that can be rendered
 // in the Chat pane.
 //

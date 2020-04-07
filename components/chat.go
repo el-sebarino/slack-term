@@ -288,9 +288,6 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 		)
 
 		// Channel
-		// The message class doesn't have a way to keep track of channel
-		// so get the channelID and convert it.
-
 		cells = append(cells, termui.DefaultTxBuilder.Build(
 			msg.GetChannel(),
 			termui.ColorDefault, termui.ColorDefault)...
@@ -330,6 +327,16 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 
 	return cells
 }
+
+// Get most recent channel ID
+func (c *Chat) GetLastMessage() Message {
+	// List of messages
+	sortedMessages := SortMessages(c.Messages)
+	messagesLen := len(sortedMessages)
+	return sortedMessages[messagesLen - 1]
+
+}
+
 
 // Help shows the usage and key bindings in the chat pane
 func (c *Chat) Help(usage string, cfg *config.Config) {
