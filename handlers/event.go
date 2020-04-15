@@ -129,8 +129,8 @@ func messageHandler(ctx *context.AppContext) {
 						continue
 					}
 
-					// Add message to the selected channel
-					if ev.Channel == ctx.View.Channels.ChannelItems[ctx.View.Channels.SelectedChannel].ID {
+					// Add message to the firehose
+					if true {
 
 						// Get the thread timestamp of the event, we need to
 						// check the previous message as well, because edited
