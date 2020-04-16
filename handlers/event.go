@@ -656,7 +656,7 @@ func actionNewMessage(ctx *context.AppContext, ev *slack.MessageEvent) {
 	termui.Render(ctx.View.Channels)
 
 	// Terminal bell
-	fmt.Print("\a")
+	//fmt.Print("\a")
 
 	// Desktop notification
 	if ctx.Config.Notify == config.NotifyMention {
