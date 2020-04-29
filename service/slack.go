@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+        "math/rand"
 	"net/url"
 	"regexp"
 	"sort"
@@ -403,6 +404,13 @@ func (s *SlackService) SendCommand(channelID string, message string) (bool, erro
 	}
 
 	return false, nil
+}
+
+func (s *SlackService) GetInitialMessages(count int) ([]components.Message, []components.ChannelItem, error) {
+        convo := s.Conversations[rand.Intn(len(s.Conversations))]
+        ID := convo.ID
+        return s.GetMessages(ID, count)
+
 }
 
 // GetMessages will get messages for a channel, group or im channel delimited

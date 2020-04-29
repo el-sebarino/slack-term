@@ -23,10 +23,10 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
         sideBarHeight := termui.TermHeight() - input.Par.Height
 
 	// Channels: fill the component
-	//slackChans, err := svc.GetChannels()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	_, err := svc.GetChannels()
+	if err != nil {
+	 	return nil, err
+	}
 
 	// Threads: create component
 	threads := components.CreateThreadsComponent(sideBarHeight)
@@ -36,8 +36,7 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 
 	// Chat: fill the component
 	// msgs, thr, err := svc.GetMessages(
-	msgs, _, err := svc.GetMessages(
-                "TODO: get channel, or make a function to get fireshose",
+	msgs, _, err := svc.GetInitialMessages(
 		chat.GetMaxItems(),
 	)
 	if err != nil {
