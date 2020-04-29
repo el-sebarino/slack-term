@@ -89,9 +89,9 @@ func CreateAppContext(flgConfig string, flgToken string, flgDebug bool, version 
 		return nil, err
 	}
 
-	columns := []*termui.Row{
-		termui.NewCol(config.SidebarWidth, 0, view.Channels),
-	}
+	 columns := []*termui.Row{
+	 	termui.NewCol(config.SidebarWidth, 0, view.Chat),
+	 }
 
 	threads := false
 	if len(view.Threads.ChannelItems) > 0 {

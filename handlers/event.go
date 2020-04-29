@@ -428,7 +428,6 @@ func actionChangeThread(ctx *context.AppContext) {
 	// Set messages for the channel
 	ctx.View.Chat.SetMessages(msgs)
 
-	termui.Render(ctx.View.Channels)
 	termui.Render(ctx.View.Threads)
 	termui.Render(ctx.View.Chat)
 }
