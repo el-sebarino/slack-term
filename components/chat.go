@@ -21,6 +21,51 @@ type Chat struct {
         AbbrevCache     map[string]slack.Channel
         CacheCounter    int
 
+        CurrentAbbrev   string
+}
+
+func (c* Chat) GetChannelsList() []string {
+        var keys []string
+        var chanStrings []string
+
+        // TODO better way to sort? more concise?
+        for k := range c.AbbrevCache {
+                keys = append(keys, k)
+        }
+        // TODO represent the "abbrev" chans as numbers? This is sorting "numericallly"
+        sort.Slice(keys, func(i, j int) bool { return (len(keys[i]) == len(keys[j]) && keys[i] < keys[j]) || len(keys[i]) < len(keys[j])  } )
+        for _, k := range keys {
+                chanStrings = append(chanStrings, fmt.Sprintf("%s", c.GetChannelString(k)))
+        }
+        return chanStrings
+}
+
+func (c* Chat) SetChannel(ch string) error {
+        _, err := c.AbbrevToChanID(ch) 
+        if err != nil {
+                return err
+        }
+        c.CurrentAbbrev = ch
+        return nil
+}
+
+// TODO: make this same as wowstring in messages
+func (c* Chat) GetChannelString(ch string) string {
+        channel, err := c.AbbrevToChan(ch)
+        if err != nil {
+                return "???"
+        }
+        return fmt.Sprintf("(%s) %s", ch, channel.Name)
+}
+
+func (c* Chat) GetCurrentChannelString() string {
+        return c.GetChannelString(c.CurrentAbbrev)
+}
+
+func (c* Chat) GetCurrentChannel() slack.Channel {
+        // TODO error?
+        channel, _ := c.AbbrevToChan(c.CurrentAbbrev)
+        return channel
 }
 
 // map a channel to unique identifier,"hash"
@@ -40,14 +85,15 @@ func (c* Chat) GetAbbrev(m Message) string {
         return fmt.Sprintf("(%s) ", c.ChanToAbbrev(m.Chan))
 }
 
-// Get chan from abbrev. 
-func (c* Chat) AbbrevToChanID(a string) (string, error) {
+func (c* Chat) AbbrevToChan(a string) (slack.Channel, error) {
         ch := c.AbbrevCache[a] 
-       // if chanID == nil {
-      //          return "???", errors.new("Did you cache abbrev first?")
-       // } else {
-                return ch.ID, nil
-        //}
+        // TODO: error handle
+        return ch, nil
+}
+
+func (c* Chat) AbbrevToChanID(a string) (string, error) {
+        ch, err := c.AbbrevToChan(a)
+        return ch.ID, err
 }
 
 
@@ -203,12 +249,17 @@ func (c *Chat) GetMaxItems() int {
 // SetMessages will put the provided messages into the Messages field of the
 // Chat view
 func (c *Chat) SetMessages(messages []Message) {
+        // sets the channel to last added message
 	// Reset offset first, when scrolling in view and changing channels we
 	// want the offset to be 0 when loading new messages
 	c.Offset = 0
+        var last_message Message
 	for _, msg := range messages {
-		c.Messages[msg.ID] = msg
+		c.AddMessage(msg)
+                last_message = msg
 	}
+        // Sets the channel to last added message
+        c.CurrentAbbrev=c.GetAbbrev(last_message)
 }
 
 // AddMessage adds a single message to Messages

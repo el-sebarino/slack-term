@@ -22,6 +22,13 @@ import (
 
 var scrollTimer *time.Timer
 var notifyTimer *time.Timer
+// var (
+//         // TODO make it functional
+//         COMMANDS = []string {
+//                 "l", // LIST
+//         }
+// )
+
 
 // actionMap binds specific action names to the function counterparts,
 // these action names can then be used to bind them to specific keys
@@ -73,11 +80,11 @@ func eventHandler(ctx *context.AppContext) {
 			handleMoreTermboxEvents(ctx, ev)
 
 			// Place your debugging statements here
-			if ctx.Debug {
-				ctx.View.Debug.Println(
-					"event received",
-				)
-			}
+			// if ctx.Debug {
+			// 	ctx.View.Debug.Println(
+			// 		"event received",
+			// 	)
+			// }
 		}
 	}()
 }
@@ -141,7 +148,10 @@ func messageHandler(ctx *context.AppContext) {
                                         if threadTimestamp != "" {
                                                 ctx.View.Chat.AddReply(threadTimestamp, msg)
                                         } else if threadTimestamp == "" && ctx.Focus == context.ChatFocus {
+                                                // TODO  should be part of addMessage?
                                                 ctx.View.Chat.AddMessage(msg)
+                                                ctx.View.Chat.SetBorderLabel(ctx.View.Chat.GetCurrentChannelString())
+                                                termui.Render(ctx.View.Chat)
                                         }
 
                                         // we (mis)use actionChangeChannel, to rerender, the
@@ -308,6 +318,40 @@ func actionMoveCursorLeft(ctx *context.AppContext) {
 	termui.Render(ctx.View.Input)
 }
 
+func isChannelSet(input string) (bool, string, string) {
+       re := regexp.MustCompile(`^\s*/(\d+)`)
+       matchedIndexPairs := re.FindSubmatchIndex([]byte(input))
+        if matchedIndexPairs == nil {
+                return false, "", input
+        }
+        left := matchedIndexPairs[2]
+        right := matchedIndexPairs[3]
+        abbrev := input[left:right]
+        rest := input[right:]
+        return true, abbrev, rest
+}
+
+func isCmd(input string) (bool, string) {
+       re := regexp.MustCompile(`^\s*/(\w+)`)
+       matchedIndexPairs := re.FindSubmatchIndex([]byte(input))
+        if matchedIndexPairs == nil {
+                return false, ""
+        }
+        left := matchedIndexPairs[2]
+        right := matchedIndexPairs[3]
+        cmd := input[left:right]
+        return true, cmd
+        // rest := input[right:]
+}
+
+func actionList(ctx *context.AppContext) {
+        ctx.View.Debug.Println( fmt.Sprintf("Listing channels"))
+        chanStrings := ctx.View.Chat.GetChannelsList()
+        for _, c := range chanStrings {
+                ctx.View.Debug.Println( fmt.Sprintf(c))
+        }
+}
+
 func actionSend(ctx *context.AppContext) {
 	if !ctx.View.Input.IsEmpty() {
 
@@ -317,35 +361,37 @@ func actionSend(ctx *context.AppContext) {
 		ctx.View.Input.Clear()
 		termui.Render(ctx.View.Input)
                
-                // TODO: checking if its a command
-                isCmd := false
-			// Send message
-		if !isCmd {
-			if ctx.Focus == context.ChatFocus {
-				err := ctx.Service.SendMessage(
-                                        "TODO: pick the channel",
-					message,
-				)
-				if err != nil {
-					ctx.View.Debug.Println(
-						err.Error(),
-					)
-				}
+                isChannelSetCmd, abbrev, message := isChannelSet(message)
+                if isChannelSetCmd {
+                        ctx.View.Chat.SetChannel(abbrev)
+                        ctx.View.Debug.Println( fmt.Sprintf("Set channel to %s", abbrev))
+                        ctx.View.Debug.Println( fmt.Sprintf(" channel is now %s", ctx.View.Chat.GetCurrentChannelString()))
+                }
+                        
+                isCmd, commandStr := isCmd(message) 
+                if isCmd {
+                        ctx.View.Debug.Println( fmt.Sprintf("Got command '%s'", commandStr))
+                        //TODO not hardcoding
+                        switch commandStr {
+                        case "l":
+                                actionList(ctx)
+                        case "q":
+                                actionQuit(ctx)
+                        default:
+                                actionHelp(ctx)
+                        }
+                } else {
+			if ctx.Focus == context.ChatFocus && len(message) > 0 {
+                                ctx.View.Debug.Println( fmt.Sprintf("Sending on channel %s", ctx.View.Chat.GetCurrentChannelString()))
+			 	 err := ctx.Service.SendMessage(
+                                        ctx.View.Chat.GetCurrentChannel().ID,
+			 	 	message,
+			 	 )
+			 	 if err != nil {
+			 	 	ctx.View.Debug.Println( err.Error(),)
+                                }
 
-			}
-
-			if ctx.Focus == context.ThreadFocus {
-				err := ctx.Service.SendReply(
-                                        "TODO: pick channel ID",
-                                        "TODO: pick thread ID",
-					message,
-				)
-				if err != nil {
-					ctx.View.Debug.Println(
-						err.Error(),
-					)
-				}
-			}
+			 }
 		}
 
 	}

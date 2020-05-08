@@ -6,6 +6,9 @@ import (
 	"github.com/erroneousboat/slack-term/components"
 	"github.com/erroneousboat/slack-term/config"
 	"github.com/erroneousboat/slack-term/service"
+
+        "errors"
+        "fmt"
 )
 
 type View struct {
@@ -22,17 +25,23 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 	input := components.CreateInputComponent()
         sideBarHeight := termui.TermHeight() - input.Par.Height
 
-	// Channels: fill the component
-	_, err := svc.GetChannels()
-	if err != nil {
-	 	return nil, err
-	}
-
 	// Threads: create component
 	threads := components.CreateThreadsComponent(sideBarHeight)
 
 	// Chat: create the component
 	chat := components.CreateChatComponent(input.Par.Height)
+
+        // Chat: let the chat know about the channels
+        // Also sets up the svc for below calls
+	slackchans, err := svc.InitializeChannels()
+	if err == nil {
+                for _, c := range slackchans {
+                        // TODO: rename this
+                        chat.ChanToAbbrev(c)
+                }
+	} else {
+                return nil, errors.New(fmt.Sprintf("oops %s", slackchans))
+        }
 
 	// Chat: fill the component
 	// msgs, thr, err := svc.GetMessages(
@@ -46,8 +55,9 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 	// Chat: set messages in component
 	chat.SetMessages(msgs)
 
+
 	chat.SetBorderLabel(
-		"Firehose",
+		chat.GetCurrentChannelString(),
 	)
 
 	// Threads: set threads in component

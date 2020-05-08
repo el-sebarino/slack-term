@@ -8,10 +8,10 @@ import (
         "math/rand"
 	"net/url"
 	"regexp"
-	"sort"
+	// "sort"
 	"strconv"
 	"strings"
-	"sync"
+	// "sync"
 	"time"
 
 	"github.com/slack-go/slack"
@@ -85,7 +85,7 @@ func (s *SlackService) LookupChannel(ID string) (slack.Channel, error) {
 	return dummy, errors.New("LookupChannel() channel not found")
 }
 
-func (s *SlackService) GetChannels() ([]components.ChannelItem, error) {
+func (s *SlackService) InitializeChannels() ([]slack.Channel, error) {
 	slackChans := make([]slack.Channel, 0)
 
 	// Initial request
@@ -126,139 +126,18 @@ func (s *SlackService) GetChannels() ([]components.ChannelItem, error) {
 		if err != nil {
 			return nil, err
 		}
-
+                
 		slackChans = append(slackChans, channels...)
 		nextCur = cursor
 	}
 
-	// We're creating tempChan, because we want to be able to
-	// sort the types of channels into buckets
-	type tempChan struct {
-		channelItem  components.ChannelItem
-		slackChannel slack.Channel
-	}
+        for _, c := range slackChans {
+                if c.IsMember { 
+                         s.Conversations = append(s.Conversations, c)
+                } 
+        }
 
-	// Initialize buckets
-	buckets := make(map[int]map[string]*tempChan)
-	buckets[0] = make(map[string]*tempChan) // Channels
-	buckets[1] = make(map[string]*tempChan) // Group
-	buckets[2] = make(map[string]*tempChan) // MpIM
-	buckets[3] = make(map[string]*tempChan) // IM
-
-	var wg sync.WaitGroup
-	for _, chn := range slackChans {
-		chanItem := s.createChannelItem(chn)
-
-		if chn.IsChannel {
-			if !chn.IsMember {
-				continue
-			}
-
-			chanItem.Type = components.ChannelTypeChannel
-
-			if chn.UnreadCount > 0 {
-				chanItem.Notification = true
-			}
-
-			buckets[0][chn.ID] = &tempChan{
-				channelItem:  chanItem,
-				slackChannel: chn,
-			}
-		}
-
-		if chn.IsGroup {
-			if !chn.IsMember {
-				continue
-			}
-
-			// This is done because MpIM channels are also considered groups
-			if chn.IsMpIM {
-				if !chn.IsOpen {
-					continue
-				}
-
-				chanItem.Type = components.ChannelTypeMpIM
-
-				if chn.UnreadCount > 0 {
-					chanItem.Notification = true
-				}
-
-				buckets[2][chn.ID] = &tempChan{
-					channelItem:  chanItem,
-					slackChannel: chn,
-				}
-			} else {
-
-				chanItem.Type = components.ChannelTypeGroup
-
-				if chn.UnreadCount > 0 {
-					chanItem.Notification = true
-				}
-
-				buckets[1][chn.ID] = &tempChan{
-					channelItem:  chanItem,
-					slackChannel: chn,
-				}
-			}
-		}
-
-		// NOTE: user presence is set in the event handler by the function
-		// `actionSetPresenceAll`, that is why we set the presence to away
-		if chn.IsIM {
-			// Check if user is deleted, we do this by checking the user id,
-			// and see if we have the user in the UserCache
-			name, ok := s.UserCache[chn.User]
-			if !ok {
-				continue
-			}
-
-			chanItem.Name = name
-			chanItem.Type = components.ChannelTypeIM
-			chanItem.Presence = "away"
-
-			if chn.UnreadCount > 0 {
-				chanItem.Notification = true
-			}
-
-			buckets[3][chn.User] = &tempChan{
-				channelItem:  chanItem,
-				slackChannel: chn,
-			}
-		}
-	}
-
-	wg.Wait()
-
-	// Sort the buckets
-	var keys []int
-	for k := range buckets {
-		keys = append(keys, k)
-	}
-	sort.Ints(keys)
-
-	var chans []components.ChannelItem
-	for _, k := range keys {
-
-		bucket := buckets[k]
-
-		// Sort channels in every bucket
-		tcArr := make([]tempChan, 0)
-		for _, v := range bucket {
-			tcArr = append(tcArr, *v)
-		}
-
-		sort.Slice(tcArr, func(i, j int) bool {
-			return tcArr[i].channelItem.Name < tcArr[j].channelItem.Name
-		})
-
-		// Add ChannelItem and SlackChannel to the SlackService struct
-		for _, tc := range tcArr {
-			chans = append(chans, tc.channelItem)
-			s.Conversations = append(s.Conversations, tc.slackChannel)
-		}
-	}
-
-	return chans, nil
+        return s.Conversations, nil
 }
 
 // GetUserPresence will get the presence of a specific user
@@ -420,7 +299,6 @@ func (s *SlackService) GetInitialMessages(count int) ([]components.Message, []co
         convo := s.Conversations[rand.Intn(len(s.Conversations))]
         ID := convo.ID
         return s.GetMessages(ID, count)
-
 }
 
 // GetMessages will get messages for a channel, group or im channel delimited
