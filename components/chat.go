@@ -5,11 +5,10 @@ import (
 	"sort"
 	"strings"
 	"time"
-
 	"github.com/erroneousboat/termui"
 	runewidth "github.com/mattn/go-runewidth"
-
 	"github.com/erroneousboat/slack-term/config"
+        "github.com/slack-go/slack"
 )
 
 // Chat is the definition of a Chat component
@@ -17,7 +16,40 @@ type Chat struct {
 	List     *termui.List
 	Messages map[string]Message
 	Offset   int
+
+        // map "abbrev"s / short names of channels, to channels
+        AbbrevCache     map[string]slack.Channel
+        CacheCounter    int
+
 }
+
+// map a channel to unique identifier,"hash"
+func (c* Chat) ChanToAbbrev(ch slack.Channel) string {
+        for k := range c.AbbrevCache {
+                if c.AbbrevCache[k].ID == ch.ID {
+                        return k
+                }
+        }
+        newKey := fmt.Sprintf("%d", c.CacheCounter)
+        c.AbbrevCache[newKey] = ch
+        c.CacheCounter++
+        return newKey
+}
+
+func (c* Chat) GetAbbrev(m Message) string {
+        return fmt.Sprintf("(%s) ", c.ChanToAbbrev(m.Chan))
+}
+
+// Get chan from abbrev. 
+func (c* Chat) AbbrevToChanID(a string) (string, error) {
+        ch := c.AbbrevCache[a] 
+       // if chanID == nil {
+      //          return "???", errors.new("Did you cache abbrev first?")
+       // } else {
+                return ch.ID, nil
+        //}
+}
+
 
 // CreateChatComponent is the constructor for the Chat struct
 func CreateChatComponent(inputHeight int) *Chat {
@@ -25,6 +57,8 @@ func CreateChatComponent(inputHeight int) *Chat {
 		List:     termui.NewList(),
 		Messages: make(map[string]Message),
 		Offset:   0,
+                AbbrevCache: make(map[string]slack.Channel),
+                CacheCounter: 0,
 	}
 
 	chat.List.Height = termui.TermHeight() - inputHeight
@@ -287,6 +321,18 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 			termui.ColorDefault, termui.ColorDefault)...,
 		)
 
+                // Abbrev
+		cells = append(cells, termui.DefaultTxBuilder.Build(
+			c.GetAbbrev(msg),
+			termui.ColorDefault, termui.ColorDefault)...,
+		)
+
+                // WOW style name
+		cells = append(cells, termui.DefaultTxBuilder.Build(
+			msg.GetWOWString(),
+			termui.ColorDefault, termui.ColorDefault)...,
+		)
+
 		// Thread
 		cells = append(cells, termui.DefaultTxBuilder.Build(
 			msg.GetThread(),
@@ -294,10 +340,10 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 		)
 
 		// Name
-		cells = append(cells, termui.DefaultTxBuilder.Build(
-			msg.GetName(),
-			termui.ColorDefault, termui.ColorDefault)...,
-		)
+		//cells = append(cells, termui.DefaultTxBuilder.Build(
+		//	msg.GetName(),
+		//	termui.ColorDefault, termui.ColorDefault)...,
+		//)
 	}
 
 	// Hack, in order to get the correct fg and bg attributes. This is

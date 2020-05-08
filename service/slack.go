@@ -75,6 +75,16 @@ func NewSlackService(config *config.Config) (*SlackService, error) {
 	return svc, nil
 }
 
+func (s *SlackService) LookupChannel(ID string) (slack.Channel, error) {
+	var dummy slack.Channel
+	for _, conversation := range s.Conversations {
+		if conversation.ID == ID {
+			return conversation, nil
+		}
+	}	
+	return dummy, errors.New("LookupChannel() channel not found")
+}
+
 func (s *SlackService) GetChannels() ([]components.ChannelItem, error) {
 	slackChans := make([]slack.Channel, 0)
 
@@ -537,6 +547,15 @@ func (s *SlackService) CreateMessage(message slack.Message, channelID string) co
 		name = "unknown"
 	}
 
+	// Get the conversation from the service
+	channel, _ := s.LookupChannel(channelID)
+
+	// Not found
+//	if !okchan {
+//	} else {
+
+//	}
+
 	// Parse time
 	floatTime, err := strconv.ParseFloat(message.Timestamp, 64)
 	if err != nil {
@@ -556,6 +575,7 @@ func (s *SlackService) CreateMessage(message slack.Message, channelID string) co
 		StyleName:   s.Config.Theme.Message.Name,
 		StyleText:   s.Config.Theme.Message.Text,
 		FormatTime:  s.Config.Theme.Message.TimeFormat,
+		Chan:        channel,
 	}
 
 	// When there are attachments, add them to Messages

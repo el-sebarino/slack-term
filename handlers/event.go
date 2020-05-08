@@ -471,7 +471,7 @@ func actionMoveCursorDownThreads(ctx *context.AppContext) {
 func actionNewMessage(ctx *context.AppContext, ev *slack.MessageEvent) {
 
 	// Terminal bell
-	fmt.Print("\a")
+	//fmt.Print("\a")
 
 	// Desktop notification
 	if ctx.Config.Notify == config.NotifyMention {
