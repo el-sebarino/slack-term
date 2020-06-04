@@ -318,17 +318,19 @@ func actionMoveCursorLeft(ctx *context.AppContext) {
 	termui.Render(ctx.View.Input)
 }
 
-func isChannelSet(input string) (bool, string, string) {
-       re := regexp.MustCompile(`^\s*/(\d+)`)
+func isChannelSet(input string) (bool, string, string, string) {
+       re := regexp.MustCompile(`^\s*/(\d+)([a-z]*)`)
        matchedIndexPairs := re.FindSubmatchIndex([]byte(input))
         if matchedIndexPairs == nil {
-                return false, "", input
+                return false, "", "", input
         }
         left := matchedIndexPairs[2]
-        right := matchedIndexPairs[3]
-        abbrev := input[left:right]
+        middle := matchedIndexPairs[3]
+        right := matchedIndexPairs[4]
+        abbrev := input[left:middle]
+        threadabbrev := input[middle:right]
         rest := input[right:]
-        return true, abbrev, rest
+        return true, abbrev, threadabbrev, rest
 }
 
 func isCmd(input string) (bool, string) {
@@ -361,9 +363,9 @@ func actionSend(ctx *context.AppContext) {
 		ctx.View.Input.Clear()
 		termui.Render(ctx.View.Input)
                
-                isChannelSetCmd, abbrev, message := isChannelSet(message)
+                isChannelSetCmd, abbrev, thabbrev, message := isChannelSet(message)
                 if isChannelSetCmd {
-                        ctx.View.Chat.SetChannel(abbrev)
+                        ctx.View.Chat.SetChannel(abbrev, thabbrev)
                         ctx.View.Debug.Println( fmt.Sprintf("Set channel to %s", abbrev))
                         ctx.View.Debug.Println( fmt.Sprintf(" channel is now %s", ctx.View.Chat.GetCurrentChannelString()))
                 }
@@ -383,13 +385,13 @@ func actionSend(ctx *context.AppContext) {
                 } else {
 			if ctx.Focus == context.ChatFocus && len(message) > 0 {
                                 ctx.View.Debug.Println( fmt.Sprintf("Sending on channel %s", ctx.View.Chat.GetCurrentChannelString()))
-			 	 err := ctx.Service.SendMessage(
-                                        ctx.View.Chat.GetCurrentChannel().ID,
-			 	 	message,
-			 	 )
-			 	 if err != nil {
-			 	 	ctx.View.Debug.Println( err.Error(),)
-                                }
+			 	 // err := ctx.Service.SendMessage(
+                                        // ctx.View.Chat.GetCurrentChannel().ID,
+			 	 // 	message,
+			 	 // )
+			 	 // if err != nil {
+			 	 // 	ctx.View.Debug.Println( err.Error(),)
+                                // }
 
 			 }
 		}

@@ -25,6 +25,7 @@ type Chat struct {
         ThreadAbbrevCacheCounter map[string]int
 
         CurrentAbbrev   string
+        CurrentThreadAbbrev string
 }
 
 // CreateChatComponent is the constructor for the Chat struct
@@ -54,6 +55,10 @@ func getChr(id int) string {
         }
 }
 
+func (c* Chat) ThreadAbrrevToThread (ab string, th string) string {
+        return c.ThreadAbbrevCache[ab][th]
+}
+
 func (c* Chat) ThreadAndChanToThreadAbbrev (ab string, th string) string {
         threadsForThisChannel, found := c.ThreadAbbrevCache[ab]
         if found {
@@ -69,6 +74,7 @@ func (c* Chat) ThreadAndChanToThreadAbbrev (ab string, th string) string {
         } else {
                 newKey := fmt.Sprintf("%s", getChr(0))
                 c.ThreadAbbrevCacheCounter[ab] = 1
+                c.ThreadAbbrevCache[ab] = make(map[string]string)
                 c.ThreadAbbrevCache[ab][newKey] = th
                 return newKey
         }
@@ -76,22 +82,38 @@ func (c* Chat) ThreadAndChanToThreadAbbrev (ab string, th string) string {
 
 // map a channel to unique identifier,"hash"
 func (c* Chat) ChanToAbbrev(ch slack.Channel, th string) string {
+        var key string
+        var found bool
+        found = false
         for k := range c.AbbrevCache {
                 if c.AbbrevCache[k].ID == ch.ID {
-                        return k
+                        key =  k
+                        found = true
                 }
         }
-        newKey := fmt.Sprintf("%d", c.CacheCounter)
-        c.AbbrevCache[newKey] = ch
-        c.CacheCounter++
-
-        return newKey
+        if ! found {
+                key := fmt.Sprintf("%d", c.CacheCounter)
+                c.AbbrevCache[key] = ch
+                c.CacheCounter++
+        }
+        if th != "" {
+                threadAbbrev := c.ThreadAndChanToThreadAbbrev(key, th)
+                return fmt.Sprintf("%s%s", key,threadAbbrev)
+        } else {
+                return key
+        }
 }
 
-func (c* Chat) AbbrevToChan(a string) (slack.Channel, string, error) {
+func (c* Chat) AbbrevToChanAndThread(a string, th string) (slack.Channel, string, error) {
         ch := c.AbbrevCache[a] 
+        var threadName string
+        if th != "" {
+                threadName = c.ThreadAbbrevCache[a][th]
+        } else {
+                threadName = ""
+        }
         // TODO: error handle
-        return ch, nil
+        return ch, threadName, nil
 }
 
 func (c* Chat) GetChannelsList() []string {
@@ -110,18 +132,20 @@ func (c* Chat) GetChannelsList() []string {
         return chanStrings
 }
 
-func (c* Chat) SetChannel(ch string) error {
-        _, err := c.AbbrevToChan(ch, "") 
+func (c* Chat) SetChannel(ch string, th string) error {
+        // TODO  .. set thread??
+        _, _, err := c.AbbrevToChanAndThread(ch, th) 
         if err != nil {
                 return err
         }
         c.CurrentAbbrev = ch
+        c.CurrentThreadAbbrev = th
         return nil
 }
 
 // TODO: make this same as wowstring in messages
 func (c* Chat) GetChannelString(ch string) string {
-        channel, err := c.AbbrevToChan(ch)
+        channel, _, err := c.AbbrevToChanAndThread(ch, "")
         if err != nil {
                 return "???"
         }
@@ -134,12 +158,12 @@ func (c* Chat) GetCurrentChannelString() string {
 
 func (c* Chat) GetCurrentChannel() slack.Channel {
         // TODO error?
-        channel, _ := c.AbbrevToChan(c.CurrentAbbrev)
+        channel, _, _ := c.AbbrevToChanAndThread(c.CurrentAbbrev, "")
         return channel
 }
 
 func (c* Chat) GetAbbrev(m Message) string {
-        return fmt.Sprintf("(%s) ", c.ChanToAbbrev(m.Chan))
+        return fmt.Sprintf("(%s) ", c.ChanToAbbrev(m.Chan, m.Thread))
 }
 // Buffer implements interface termui.Bufferer
 func (c *Chat) Buffer() termui.Buffer {
@@ -395,6 +419,7 @@ func (m Message) GetWOWString() string {
         c = m.Chan
 
         if m.Thread != "" {
+
                 channelName = fmt.Sprintf("%s/%s", c.Name, m.Thread)
         } else {
                 channelName = fmt.Sprintf("%s", c.Name)

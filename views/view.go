@@ -37,7 +37,7 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 	if err == nil {
                 for _, c := range slackchans {
                         // TODO: rename this
-                        chat.ChanToAbbrev(c)
+                        chat.ChanToAbbrev(c, "")
                 }
 	} else {
                 return nil, errors.New(fmt.Sprintf("oops %s", slackchans))
