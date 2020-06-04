@@ -21,7 +21,77 @@ type Chat struct {
         AbbrevCache     map[string]slack.Channel
         CacheCounter    int
 
+        ThreadAbbrevCache map[string](map[string]string)
+        ThreadAbbrevCacheCounter map[string]int
+
         CurrentAbbrev   string
+}
+
+// CreateChatComponent is the constructor for the Chat struct
+func CreateChatComponent(inputHeight int) *Chat {
+	chat := &Chat{
+		List:     termui.NewList(),
+		Messages: make(map[string]Message),
+		Offset:   0,
+                AbbrevCache: make(map[string]slack.Channel),
+                CacheCounter: 0,
+                ThreadAbbrevCache: make(map[string](map[string]string)),
+                ThreadAbbrevCacheCounter: make(map[string]int),
+	}
+
+	chat.List.Height = termui.TermHeight() - inputHeight
+	chat.List.Overflow = "wrap"
+
+	return chat
+}
+
+func getChr(id int) string {
+        if (id < 26) {
+                return fmt.Sprintf("%c", 'a' + id)
+        } else {
+                x := id % 26
+                return fmt.Sprintf("%c%s", 'a' + x, getChr(id / 26))
+        }
+}
+
+func (c* Chat) ThreadAndChanToThreadAbbrev (ab string, th string) string {
+        threadsForThisChannel, found := c.ThreadAbbrevCache[ab]
+        if found {
+                for k := range threadsForThisChannel {
+                        if threadsForThisChannel[k] == th {
+                                return k
+                        }
+                }
+                newKey := fmt.Sprintf("%s", getChr(c.ThreadAbbrevCacheCounter[ab]))
+                c.ThreadAbbrevCacheCounter[ab]++ 
+                c.ThreadAbbrevCache[ab][newKey] = th
+                return newKey
+        } else {
+                newKey := fmt.Sprintf("%s", getChr(0))
+                c.ThreadAbbrevCacheCounter[ab] = 1
+                c.ThreadAbbrevCache[ab][newKey] = th
+                return newKey
+        }
+}
+
+// map a channel to unique identifier,"hash"
+func (c* Chat) ChanToAbbrev(ch slack.Channel, th string) string {
+        for k := range c.AbbrevCache {
+                if c.AbbrevCache[k].ID == ch.ID {
+                        return k
+                }
+        }
+        newKey := fmt.Sprintf("%d", c.CacheCounter)
+        c.AbbrevCache[newKey] = ch
+        c.CacheCounter++
+
+        return newKey
+}
+
+func (c* Chat) AbbrevToChan(a string) (slack.Channel, string, error) {
+        ch := c.AbbrevCache[a] 
+        // TODO: error handle
+        return ch, nil
 }
 
 func (c* Chat) GetChannelsList() []string {
@@ -41,7 +111,7 @@ func (c* Chat) GetChannelsList() []string {
 }
 
 func (c* Chat) SetChannel(ch string) error {
-        _, err := c.AbbrevToChanID(ch) 
+        _, err := c.AbbrevToChan(ch, "") 
         if err != nil {
                 return err
         }
@@ -68,51 +138,9 @@ func (c* Chat) GetCurrentChannel() slack.Channel {
         return channel
 }
 
-// map a channel to unique identifier,"hash"
-func (c* Chat) ChanToAbbrev(ch slack.Channel) string {
-        for k := range c.AbbrevCache {
-                if c.AbbrevCache[k].ID == ch.ID {
-                        return k
-                }
-        }
-        newKey := fmt.Sprintf("%d", c.CacheCounter)
-        c.AbbrevCache[newKey] = ch
-        c.CacheCounter++
-        return newKey
-}
-
 func (c* Chat) GetAbbrev(m Message) string {
         return fmt.Sprintf("(%s) ", c.ChanToAbbrev(m.Chan))
 }
-
-func (c* Chat) AbbrevToChan(a string) (slack.Channel, error) {
-        ch := c.AbbrevCache[a] 
-        // TODO: error handle
-        return ch, nil
-}
-
-func (c* Chat) AbbrevToChanID(a string) (string, error) {
-        ch, err := c.AbbrevToChan(a)
-        return ch.ID, err
-}
-
-
-// CreateChatComponent is the constructor for the Chat struct
-func CreateChatComponent(inputHeight int) *Chat {
-	chat := &Chat{
-		List:     termui.NewList(),
-		Messages: make(map[string]Message),
-		Offset:   0,
-                AbbrevCache: make(map[string]slack.Channel),
-                CacheCounter: 0,
-	}
-
-	chat.List.Height = termui.TermHeight() - inputHeight
-	chat.List.Overflow = "wrap"
-
-	return chat
-}
-
 // Buffer implements interface termui.Bufferer
 func (c *Chat) Buffer() termui.Buffer {
 	// Convert Messages into termui.Cell
@@ -355,6 +383,42 @@ func (c *Chat) MessagesToCells(msgs map[string]Message) []termui.Cell {
 
 	return cells
 }
+
+
+// Get an IRC style string from a slack.Channel
+// Could also go in slack.channel
+func (m Message) GetWOWString() string {
+        var wowString string
+        var c slack.Channel
+        var channelName string
+
+        c = m.Chan
+
+        if m.Thread != "" {
+                channelName = fmt.Sprintf("%s/%s", c.Name, m.Thread)
+        } else {
+                channelName = fmt.Sprintf("%s", c.Name)
+        }
+        
+        // Find out the type of the channel
+        if c.IsChannel {
+                // [random] joe:
+                wowString = fmt.Sprintf("[%s] %s", channelName, m.Name)
+        } else if c.IsGroup {
+                if c.IsMpIM {
+                        // ??
+                        // [joe-fred-lisa] fred:
+                        wowString = fmt.Sprintf("[%s] %s", channelName, m.Name)
+                } else {
+                        wowString = fmt.Sprintf("[%s] %s", channelName, m.Name)
+                }
+        } else if c.IsIM {
+                // joe:
+                wowString = fmt.Sprintf("%s", m.Name)
+        }
+        return fmt.Sprintf("%s: ", wowString)
+}
+
 
 // MessageToCells will convert a Message struct to termui.Cell
 //

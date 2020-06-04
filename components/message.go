@@ -70,34 +70,6 @@ func (m Message) GetThread() string {
 func (m Message) GetContent() string {
 	return fmt.Sprintf("[.](%s)", m.StyleText)
 }
-
-// Get an IRC style string from a slack.Channel
-// Could also go in slack.channel
-func (m Message) GetWOWString() string {
-        var wowString string
-        var c slack.Channel
-
-        c = m.Chan
-        
-        // Find out the type of the channel
-        if c.IsChannel {
-                // [random] joe:
-                wowString = fmt.Sprintf("[%s] %s", c.Name, m.Name)
-        } else if c.IsGroup {
-                if c.IsMpIM {
-                        // ??
-                        // [joe-fred-lisa] fred:
-                        wowString = fmt.Sprintf("[%s] %s", c.Name, m.Name)
-                } else {
-                        wowString = fmt.Sprintf("[%s] %s", c.Name, m.Name)
-                }
-        } else if c.IsIM {
-                // joe:
-                wowString = fmt.Sprintf("%s", m.Name)
-        }
-        return fmt.Sprintf("%s: ", wowString)
-}
-
 func (m Message) colorizeName(styleName string) string {
 	if strings.Contains(styleName, "colorize") {
 		var sum int
