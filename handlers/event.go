@@ -354,6 +354,25 @@ func actionList(ctx *context.AppContext) {
         }
 }
 
+func actionContext(ctx *context.AppContext) {
+        currentChan := ctx.View.Chat.GetCurrentChannel()
+	msgs, _, err := ctx.Service.GetMessages(
+                currentChan.ID,
+		ctx.View.Chat.GetMaxItems(),
+	)
+	if err != nil {
+                ctx.View.Debug.Println( fmt.Sprintf("Error changing context: %s", err))
+                return
+	}
+
+        ctx.View.Debug.Println( fmt.Sprintf("changing context to %s", currentChan.ID))
+	// Chat: set messages in component
+        ctx.View.Debug.Println( fmt.Sprintf(" got %d messages", len(msgs)))
+        ctx.View.Chat.SetBorderLabel(ctx.View.Chat.GetCurrentChannelString())
+	ctx.View.Chat.SetMessages(msgs)
+	termui.Render(ctx.View.Chat)
+}
+
 func actionSend(ctx *context.AppContext) {
 	if !ctx.View.Input.IsEmpty() {
 
@@ -379,19 +398,21 @@ func actionSend(ctx *context.AppContext) {
                                 actionList(ctx)
                         case "q":
                                 actionQuit(ctx)
+                        case "c":
+                                actionContext(ctx)
                         default:
                                 actionHelp(ctx)
                         }
                 } else {
 			if ctx.Focus == context.ChatFocus && len(message) > 0 {
-                                ctx.View.Debug.Println( fmt.Sprintf("Sending on channel %s", ctx.View.Chat.GetCurrentChannelString()))
-			 	 // err := ctx.Service.SendMessage(
-                                        // ctx.View.Chat.GetCurrentChannel().ID,
-			 	 // 	message,
-			 	 // )
-			 	 // if err != nil {
-			 	 // 	ctx.View.Debug.Println( err.Error(),)
-                                // }
+                               ctx.View.Debug.Println( fmt.Sprintf("Sending on channel %s", ctx.View.Chat.GetCurrentChannelString()))
+			 	 err := ctx.Service.SendMessage(
+                                         ctx.View.Chat.GetCurrentChannel().ID,
+			 	  	message,
+			 	 )
+			 	  if err != nil {
+			 	  	ctx.View.Debug.Println( err.Error(),)
+                                 }
 
 			 }
 		}
@@ -435,7 +456,6 @@ func actionGetMessages(ctx *context.AppContext) {
 	}
 
 	ctx.View.Chat.SetMessages(msgs)
-
 	termui.Render(ctx.View.Chat)
 }
 

@@ -127,7 +127,7 @@ func (c* Chat) GetChannelsList() []string {
         // TODO represent the "abbrev" chans as numbers? This is sorting "numericallly"
         sort.Slice(keys, func(i, j int) bool { return (len(keys[i]) == len(keys[j]) && keys[i] < keys[j]) || len(keys[i]) < len(keys[j])  } )
         for _, k := range keys {
-                chanStrings = append(chanStrings, fmt.Sprintf("%s", c.GetChannelString(k)))
+                chanStrings = append(chanStrings, fmt.Sprintf("%s", c.GetChannelString(k, "")))
         }
         return chanStrings
 }
@@ -144,16 +144,20 @@ func (c* Chat) SetChannel(ch string, th string) error {
 }
 
 // TODO: make this same as wowstring in messages
-func (c* Chat) GetChannelString(ch string) string {
-        channel, _, err := c.AbbrevToChanAndThread(ch, "")
+func (c* Chat) GetChannelString(ch string, th string) string {
+        channel, thread, err := c.AbbrevToChanAndThread(ch, th)
         if err != nil {
                 return "???"
         }
-        return fmt.Sprintf("(%s) %s", ch, channel.Name)
+        if thread != "" {
+                return fmt.Sprintf("(%s%s) %s/%s", ch, th, channel.Name, th)
+        } else {
+                return fmt.Sprintf("(%s) %s", ch, channel.Name)
+        }
 }
 
 func (c* Chat) GetCurrentChannelString() string {
-        return c.GetChannelString(c.CurrentAbbrev)
+        return c.GetChannelString(c.CurrentAbbrev, c.CurrentThreadAbbrev)
 }
 
 func (c* Chat) GetCurrentChannel() slack.Channel {
@@ -317,6 +321,7 @@ func (c *Chat) SetMessages(messages []Message) {
 // AddMessage adds a single message to Messages
 func (c *Chat) AddMessage(message Message) {
 	c.Messages[message.ID] = message
+        c.CurrentAbbrev=c.GetAbbrev(message)
 }
 
 // AddReply adds a single reply to a parent thread, it also sets
@@ -411,33 +416,34 @@ func (c *Chat) MessagesToCells(msgs map[string]Message) []termui.Cell {
 
 // Get an IRC style string from a slack.Channel
 // Could also go in slack.channel
-func (m Message) GetWOWString() string {
+func (c* Chat)  GetWOWString(m Message) string {
         var wowString string
-        var c slack.Channel
+        var slackchan slack.Channel
         var channelName string
 
-        c = m.Chan
+        slackchan = m.Chan
 
         if m.Thread != "" {
-
-                channelName = fmt.Sprintf("%s/%s", c.Name, m.Thread)
+                ch := c.ChanToAbbrev(slackchan, m.Thread)
+                th := c.ThreadAndChanToThreadAbbrev(ch, m.Thread)
+                channelName = fmt.Sprintf("%s/%s", slackchan.Name, th)
         } else {
-                channelName = fmt.Sprintf("%s", c.Name)
+                channelName = fmt.Sprintf("%s", slackchan.Name)
         }
         
         // Find out the type of the channel
-        if c.IsChannel {
+        if slackchan.IsChannel {
                 // [random] joe:
                 wowString = fmt.Sprintf("[%s] %s", channelName, m.Name)
-        } else if c.IsGroup {
-                if c.IsMpIM {
+        } else if slackchan.IsGroup {
+                if slackchan.IsMpIM {
                         // ??
                         // [joe-fred-lisa] fred:
                         wowString = fmt.Sprintf("[%s] %s", channelName, m.Name)
                 } else {
                         wowString = fmt.Sprintf("[%s] %s", channelName, m.Name)
                 }
-        } else if c.IsIM {
+        } else if slackchan.IsIM {
                 // joe:
                 wowString = fmt.Sprintf("%s", m.Name)
         }
@@ -469,7 +475,7 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 
                 // WOW style name
 		cells = append(cells, termui.DefaultTxBuilder.Build(
-			msg.GetWOWString(),
+			c.GetWOWString(msg),
 			termui.ColorDefault, termui.ColorDefault)...,
 		)
 
