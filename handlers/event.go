@@ -14,7 +14,6 @@ import (
 	termbox "github.com/nsf/termbox-go"
 	"github.com/slack-go/slack"
 
-	"github.com/erroneousboat/slack-term/components"
 	"github.com/erroneousboat/slack-term/config"
 	"github.com/erroneousboat/slack-term/context"
 	"github.com/erroneousboat/slack-term/views"
@@ -41,12 +40,7 @@ var actionMap = map[string]func(*context.AppContext){
 	"cursor-left":         actionMoveCursorLeft,
 	"send":                actionSend,
 	"quit":                actionQuit,
-	"mode-insert":         actionInsertMode,
-	"mode-command":        actionCommandMode,
-	"mode-search":         actionSearchMode,
 	"clear-input":         actionClearInput,
-	"thread-up":           actionMoveCursorUpThreads,
-	"thread-down":         actionMoveCursorDownThreads,
 	"chat-up":             actionScrollUpChat,
 	"chat-down":           actionScrollDownChat,
 	"help":                actionHelp,
@@ -193,14 +187,14 @@ func actionKeyEvent(ctx *context.AppContext, ev termbox.Event) {
 	// has been pressed. If this is found try to uncover
 	// the associated function with this key and execute
 	// it.
-	actionStr, ok := ctx.Config.KeyMap[ctx.Mode][keyStr]
+	actionStr, ok := ctx.Config.KeyMap["insert"][keyStr]
 	if ok {
 		action, ok := actionMap[actionStr]
 		if ok {
 			action(ctx)
 		}
 	} else {
-		if ctx.Mode == context.InsertMode && ev.Ch != 0 {
+		if ev.Ch != 0 {
 			actionInput(ctx.View, ev.Ch)
 		}
 	}
@@ -239,8 +233,7 @@ func actionRedrawGrid(ctx *context.AppContext, threads bool, debug bool) {
 			columns,
 			[]*termui.Row{
 				termui.NewCol(ctx.Config.MainWidth-ctx.Config.ThreadsWidth-3, 0, ctx.View.Chat),
-				termui.NewCol(ctx.Config.ThreadsWidth, 0, ctx.View.Threads),
-				termui.NewCol(3, 0, ctx.View.Debug),
+					termui.NewCol(3, 0, ctx.View.Debug),
 			}...,
 		)
 	} else if threads {
@@ -248,7 +241,7 @@ func actionRedrawGrid(ctx *context.AppContext, threads bool, debug bool) {
 			columns,
 			[]*termui.Row{
 				termui.NewCol(ctx.Config.MainWidth-ctx.Config.ThreadsWidth, 0, ctx.View.Chat),
-				termui.NewCol(ctx.Config.ThreadsWidth, 0, ctx.View.Threads),
+
 			}...,
 		)
 	} else if debug {
@@ -271,7 +264,7 @@ func actionRedrawGrid(ctx *context.AppContext, threads bool, debug bool) {
 	termui.Body.AddRows(
 		termui.NewRow(columns...),
 		termui.NewRow(
-			termui.NewCol(ctx.Config.SidebarWidth, 0, ctx.View.Mode),
+
 			termui.NewCol(ctx.Config.MainWidth, 0, ctx.View.Input),
 		),
 	)
@@ -290,8 +283,6 @@ func actionClearInput(ctx *context.AppContext) {
 	ctx.View.Input.Clear()
 	ctx.View.Refresh()
 
-	// Set command mode
-	actionCommandMode(ctx)
 }
 
 func actionSpace(ctx *context.AppContext) {
@@ -406,13 +397,14 @@ func actionSend(ctx *context.AppContext) {
                 } else {
 			if ctx.Focus == context.ChatFocus && len(message) > 0 {
                                ctx.View.Debug.Println( fmt.Sprintf("Sending on channel %s", ctx.View.Chat.GetCurrentChannelString()))
+                               // SENDING PARTi/
 			 	 err := ctx.Service.SendMessage(
-                                         ctx.View.Chat.GetCurrentChannel().ID,
-			 	  	message,
+                                        ctx.View.Chat.GetCurrentChannel().ID,
+			 	 	message,
 			 	 )
-			 	  if err != nil {
-			 	  	ctx.View.Debug.Println( err.Error(),)
-                                 }
+			 	 if err != nil {
+			 	 	ctx.View.Debug.Println( err.Error(),)
+                                }
 
 			 }
 		}
@@ -429,21 +421,6 @@ func actionQuit(ctx *context.AppContext) {
 	os.Exit(0)
 }
 
-func actionInsertMode(ctx *context.AppContext) {
-	ctx.Mode = context.InsertMode
-	ctx.View.Mode.SetInsertMode()
-}
-
-func actionCommandMode(ctx *context.AppContext) {
-	ctx.Mode = context.CommandMode
-	ctx.View.Mode.SetCommandMode()
-}
-
-func actionSearchMode(ctx *context.AppContext) {
-	ctx.Mode = context.SearchMode
-	ctx.View.Mode.SetSearchMode()
-}
-
 func actionGetMessages(ctx *context.AppContext) {
 	msgs, _, err := ctx.Service.GetMessages(
                 "TODO: get channel ID",
@@ -457,81 +434,6 @@ func actionGetMessages(ctx *context.AppContext) {
 
 	ctx.View.Chat.SetMessages(msgs)
 	termui.Render(ctx.View.Chat)
-}
-
-func actionChangeThread(ctx *context.AppContext) {
-	// Clear messages from Chat pane
-	ctx.View.Chat.ClearMessages()
-
-	// The first channel in the Thread list is current Channel. Set context
-	// Focus and messages accordingly.
-	var err error
-	msgs := []components.Message{}
-	if ctx.View.Threads.SelectedChannel == 0 {
-		ctx.Focus = context.ChatFocus
-
-		msgs, _, err = ctx.Service.GetMessages(
-                        "TODO: choose channel",
-			ctx.View.Chat.GetMaxItems(),
-		)
-		if err != nil {
-			termbox.Close()
-			log.Println(err)
-			os.Exit(0)
-		}
-	} else {
-		ctx.Focus = context.ThreadFocus
-
-		msgs, err = ctx.Service.GetMessageByID(
-                        "TODO: get channel ID",
-                        "TODO: get channel ID",
-		)
-		if err != nil {
-			termbox.Close()
-			log.Println(err)
-			os.Exit(0)
-		}
-	}
-
-	// Set messages for the channel
-	ctx.View.Chat.SetMessages(msgs)
-
-	termui.Render(ctx.View.Threads)
-	termui.Render(ctx.View.Chat)
-}
-
-func actionMoveCursorUpThreads(ctx *context.AppContext) {
-	go func() {
-		if scrollTimer != nil {
-			scrollTimer.Stop()
-		}
-
-		ctx.View.Threads.MoveCursorUp()
-		termui.Render(ctx.View.Threads)
-
-		scrollTimer = time.NewTimer(time.Second / 4)
-		<-scrollTimer.C
-
-		// Only actually change channel when the timer expires
-		actionChangeThread(ctx)
-	}()
-}
-
-func actionMoveCursorDownThreads(ctx *context.AppContext) {
-	go func() {
-		if scrollTimer != nil {
-			scrollTimer.Stop()
-		}
-
-		ctx.View.Threads.MoveCursorDown()
-		termui.Render(ctx.View.Threads)
-
-		scrollTimer = time.NewTimer(time.Second / 4)
-		<-scrollTimer.C
-
-		// Only actually change thread when the timer expires
-		actionChangeThread(ctx)
-	}()
 }
 
 // actionNewMessage will set the new message indicator for a channel, and
@@ -661,7 +563,7 @@ func createNotifyMessage(ctx *context.AppContext, ev *slack.MessageEvent) {
 		<-notifyTimer.C
 
 		var message string
-                message = "TODO: what channel am i on"
+		message = "TODO: what channel am i on"
 		ctx.Notify.Push("slack-term", message, "", notificator.UR_NORMAL)
 	}()
 }

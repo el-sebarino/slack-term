@@ -53,7 +53,7 @@ func NewConfig(filepath string) (*Config, error) {
 		return &cfg, errors.New("please specify the 'sidebar_width' between 1 and 11")
 	}
 
-	cfg.MainWidth = 12 - cfg.SidebarWidth
+	cfg.MainWidth = 12 //- cfg.SidebarWidth
 
 	switch cfg.Notify {
 	case NotifyAll, NotifyMention, "":
@@ -103,27 +103,27 @@ func getDefaultConfig() Config {
 		Notify:       "",
 		Emoji:        false,
 		KeyMap: map[string]keyMapping{
-			"command": {
-				"i":          "mode-insert",
-				"/":          "mode-search",
-				"k":          "channel-up",
-				"j":          "channel-down",
-				"g":          "channel-top",
-				"G":          "channel-bottom",
-				"K":          "thread-up",
-				"J":          "thread-down",
-				"<previous>": "chat-up",
-				"C-b":        "chat-up",
-				"C-u":        "chat-up",
-				"<next>":     "chat-down",
-				"C-f":        "chat-down",
-				"C-d":        "chat-down",
-				"n":          "channel-search-next",
-				"N":          "channel-search-prev",
-				"'":          "channel-jump",
-				"q":          "quit",
-				"<f1>":       "help",
-			},
+			//"command": {
+			//	"i":          "mode-insert",
+			//	"/":          "mode-search",
+			//	"k":          "channel-up",
+			//	"j":          "channel-down",
+			//	"g":          "channel-top",
+			//	"G":          "channel-bottom",
+			//	"K":          "thread-up",
+			//	"J":          "thread-down",
+			//	"<previous>": "chat-up",
+			//	"C-b":        "chat-up",
+			//	"C-u":        "chat-up",
+			//	"<next>":     "chat-down",
+			//	"C-f":        "chat-down",
+			//	"C-d":        "chat-down",
+			//	"n":          "channel-search-next",
+			//	"N":          "channel-search-prev",
+			//	"'":          "channel-jump",
+			//	"q":          "quit",
+			//	"<f1>":       "help",
+			//},
 			"insert": {
 				"<left>":      "cursor-left",
 				"<right>":     "cursor-right",
@@ -134,16 +134,16 @@ func getDefaultConfig() Config {
 				"<delete>":    "delete",
 				"<space>":     "space",
 			},
-			"search": {
-				"<left>":      "cursor-left",
-				"<right>":     "cursor-right",
-				"<escape>":    "clear-input",
-				"<enter>":     "clear-input",
-				"<backspace>": "backspace",
-				"C-8":         "backspace",
-				"<delete>":    "delete",
-				"<space>":     "space",
-			},
+			//"search": {
+			//	"<left>":      "cursor-left",
+			//	"<right>":     "cursor-right",
+			//	"<escape>":    "clear-input",
+			//	"<enter>":     "clear-input",
+			//	"<backspace>": "backspace",
+			//	"C-8":         "backspace",
+			//	"<delete>":    "delete",
+			//	"<space>":     "space",
+			//},
 		},
 		Theme: Theme{
 			View: View{

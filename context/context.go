@@ -33,7 +33,6 @@ type AppContext struct {
 	View       *views.View
 	Config     *config.Config
 	Debug      bool
-	Mode       string
 	Focus      int
 	Notify     *notificator.Notificator
 }
@@ -89,39 +88,16 @@ func CreateAppContext(flgConfig string, flgToken string, flgDebug bool, version 
 		return nil, err
 	}
 
-	 columns := []*termui.Row{
-	 	termui.NewCol(config.SidebarWidth, 0, view.Chat),
-	 }
-
-	threads := false
-	if len(view.Threads.ChannelItems) > 0 {
-		threads = true
-	}
+	 columns := []*termui.Row{}
 
 	// Setup the interface
-	if threads && flgDebug {
-		columns = append(
-			columns,
-			[]*termui.Row{
-				termui.NewCol(config.MainWidth-config.ThreadsWidth-3, 0, view.Chat),
-				termui.NewCol(config.ThreadsWidth, 0, view.Threads),
-				termui.NewCol(3, 0, view.Debug),
-			}...,
-		)
-	} else if threads {
-		columns = append(
-			columns,
-			[]*termui.Row{
-				termui.NewCol(config.MainWidth-config.ThreadsWidth, 0, view.Chat),
-				termui.NewCol(config.ThreadsWidth, 0, view.Threads),
-			}...,
-		)
-	} else if flgDebug {
+	if flgDebug {
 		columns = append(
 			columns,
 			[]*termui.Row{
 				termui.NewCol(config.MainWidth-5, 0, view.Chat),
-				termui.NewCol(config.MainWidth-6, 0, view.Debug),
+				// Don't know why -7
+				termui.NewCol(config.MainWidth-7, 0, view.Debug),
 			}...,
 		)
 	} else {
@@ -136,7 +112,7 @@ func CreateAppContext(flgConfig string, flgToken string, flgDebug bool, version 
 	termui.Body.AddRows(
 		termui.NewRow(columns...),
 		termui.NewRow(
-			termui.NewCol(config.SidebarWidth, 0, view.Mode),
+
 			termui.NewCol(config.MainWidth, 0, view.Input),
 		),
 	)
@@ -153,7 +129,6 @@ func CreateAppContext(flgConfig string, flgToken string, flgDebug bool, version 
 		View:       view,
 		Config:     config,
 		Debug:      flgDebug,
-		Mode:       CommandMode,
 		Focus:      ChatFocus,
 		Notify:     notify,
 	}, nil

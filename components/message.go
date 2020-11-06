@@ -70,6 +70,7 @@ func (m Message) GetThread() string {
 func (m Message) GetContent() string {
 	return fmt.Sprintf("[.](%s)", m.StyleText)
 }
+
 func (m Message) colorizeName(styleName string) string {
 	if strings.Contains(styleName, "colorize") {
 		var sum int

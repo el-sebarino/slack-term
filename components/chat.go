@@ -2,13 +2,13 @@ package components
 
 import (
 	"fmt"
+	"github.com/erroneousboat/slack-term/config"
+	"github.com/erroneousboat/termui"
+	runewidth "github.com/mattn/go-runewidth"
+	"github.com/slack-go/slack"
 	"sort"
 	"strings"
 	"time"
-	"github.com/erroneousboat/termui"
-	runewidth "github.com/mattn/go-runewidth"
-	"github.com/erroneousboat/slack-term/config"
-        "github.com/slack-go/slack"
 )
 
 // Chat is the definition of a Chat component
@@ -17,27 +17,39 @@ type Chat struct {
 	Messages map[string]Message
 	Offset   int
 
-        // map "abbrev"s / short names of channels, to channels
-        AbbrevCache     map[string]slack.Channel
-        CacheCounter    int
+	// map "abbrev"s / short names of channels, to channels
+	AbbrevCache     map[string]slack.Channel
+	CacheCounter    int
 
-        ThreadAbbrevCache map[string](map[string]string)
-        ThreadAbbrevCacheCounter map[string]int
+	ThreadAbbrevCache map[string](map[string]string)
+	ThreadAbbrevCacheCounter map[string]int
 
-        CurrentAbbrev   string
-        CurrentThreadAbbrev string
+	CurrentAbbrev   string
+	CurrentThreadAbbrev string
+
+	// Pirate this from SlackService, use to match against user
+	CurrentUserName string
+}
+
+// Decide if we care about this, hacky way to detect '@user'
+func (c* Chat) wantToHilite(m Message) bool {
+	return strings.Contains(m.Content, "@" + c.CurrentUserName) || m.Chan.IsIM
 }
 
 // CreateChatComponent is the constructor for the Chat struct
-func CreateChatComponent(inputHeight int) *Chat {
+func CreateChatComponent(inputHeight int, piratedName string) *Chat {
+
 	chat := &Chat{
-		List:     termui.NewList(),
-		Messages: make(map[string]Message),
-		Offset:   0,
-                AbbrevCache: make(map[string]slack.Channel),
-                CacheCounter: 0,
-                ThreadAbbrevCache: make(map[string](map[string]string)),
-                ThreadAbbrevCacheCounter: make(map[string]int),
+		List:                     termui.NewList(),
+		Messages:                 make(map[string]Message),
+		Offset:                   0,
+		AbbrevCache:              make(map[string]slack.Channel),
+		CacheCounter:             0,
+		ThreadAbbrevCache:        make(map[string]map[string]string),
+		ThreadAbbrevCacheCounter: make(map[string]int),
+
+		// Pirated variabel
+		CurrentUserName: piratedName,
 	}
 
 	chat.List.Height = termui.TermHeight() - inputHeight
@@ -68,7 +80,7 @@ func (c* Chat) ThreadAndChanToThreadAbbrev (ab string, th string) string {
                         }
                 }
                 newKey := fmt.Sprintf("%s", getChr(c.ThreadAbbrevCacheCounter[ab]))
-                c.ThreadAbbrevCacheCounter[ab]++ 
+                c.ThreadAbbrevCacheCounter[ab]++
                 c.ThreadAbbrevCache[ab][newKey] = th
                 return newKey
         } else {
@@ -105,7 +117,7 @@ func (c* Chat) ChanToAbbrev(ch slack.Channel, th string) string {
 }
 
 func (c* Chat) AbbrevToChanAndThread(a string, th string) (slack.Channel, string, error) {
-        ch := c.AbbrevCache[a] 
+        ch := c.AbbrevCache[a]
         var threadName string
         if th != "" {
                 threadName = c.ThreadAbbrevCache[a][th]
@@ -134,7 +146,7 @@ func (c* Chat) GetChannelsList() []string {
 
 func (c* Chat) SetChannel(ch string, th string) error {
         // TODO  .. set thread??
-        _, _, err := c.AbbrevToChanAndThread(ch, th) 
+        _, _, err := c.AbbrevToChanAndThread(ch, th)
         if err != nil {
                 return err
         }
@@ -145,15 +157,15 @@ func (c* Chat) SetChannel(ch string, th string) error {
 
 // TODO: make this same as wowstring in messages
 func (c* Chat) GetChannelString(ch string, th string) string {
-        channel, thread, err := c.AbbrevToChanAndThread(ch, th)
+        channel, _, err := c.AbbrevToChanAndThread(ch, th)
         if err != nil {
                 return "???"
         }
-        if thread != "" {
-                return fmt.Sprintf("(%s%s) %s/%s", ch, th, channel.Name, th)
-        } else {
+        //if thread != "" {
+        //        return fmt.Sprintf("(%s%s) %s/%s", ch, th, channel.Name, th)
+        //} else {
                 return fmt.Sprintf("(%s) %s", ch, channel.Name)
-        }
+        //}
 }
 
 func (c* Chat) GetCurrentChannelString() string {
@@ -430,7 +442,7 @@ func (c* Chat)  GetWOWString(m Message) string {
         } else {
                 channelName = fmt.Sprintf("%s", slackchan.Name)
         }
-        
+
         // Find out the type of the channel
         if slackchan.IsChannel {
                 // [random] joe:
@@ -492,24 +504,42 @@ func (c *Chat) MessageToCells(msg Message) []termui.Cell {
 		//)
 	}
 
-	// Hack, in order to get the correct fg and bg attributes. This is
-	// because the readAttr function in termui is unexported.
-	txCells := termui.DefaultTxBuilder.Build(
-		msg.GetContent(),
-		termui.ColorDefault, termui.ColorDefault,
-	)
+        // Hack, in order to get the correct fg and bg attributes. This is
+        // because the readAttr function in termui is unexported.
+        txCells := termui.DefaultTxBuilder.Build(
+                msg.GetContent(),
+                termui.ColorDefault, termui.ColorDefault,
+        )
 
-	// Text
-	for _, r := range msg.Content {
-		cells = append(
-			cells,
-			termui.Cell{
-				Ch: r,
-				Fg: txCells[0].Fg,
-				Bg: txCells[0].Bg,
-			},
-		)
-	}
+        // Extra special handling for certain messages
+        if c.wantToHilite(msg) {
+                // cells = append(cells, termui.DefaultTxBuilder.Build(
+                //                         msg.GetContent(),
+                //                         termui.ColorDefault, termui.ColorDefault)...,
+                //                 )
+                for _, r := range msg.Content {
+                        cells = append(
+                                cells,
+                                termui.Cell{
+                                        Ch: r,
+                                        Fg: termui.ColorCyan | termui.AttrBold,
+                                        Bg: termui.ColorBlack,
+                                },
+                        )
+                }
+        } else {
+                // Text
+                for _, r := range msg.Content {
+                        cells = append(
+                                cells,
+                                termui.Cell{
+                                        Ch: r,
+                                        Fg: txCells[0].Fg,
+                                        Bg: txCells[0].Bg,
+                                },
+                        )
+                }
+        }
 
 	return cells
 }

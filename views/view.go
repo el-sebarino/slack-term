@@ -15,24 +15,24 @@ type View struct {
 	Config   *config.Config
 	Input    *components.Input
 	Chat     *components.Chat
-	Threads  *components.Threads
-	Mode     *components.Mode
+//	Threads  *components.Threads
+//	Mode     *components.Mode
 	Debug    *components.Debug
 }
 
 func CreateView(config *config.Config, svc *service.SlackService) (*View, error) {
 	// Create Input component
 	input := components.CreateInputComponent()
-        sideBarHeight := termui.TermHeight() - input.Par.Height
 
 	// Threads: create component
-	threads := components.CreateThreadsComponent(sideBarHeight)
+	//threads := components.CreateThreadsComponent(sideBarHeight)
 
 	// Chat: create the component
-	chat := components.CreateChatComponent(input.Par.Height)
+	// add svc argument so that chat can pirate some variables
+	chat := components.CreateChatComponent(input.Par.Height, svc.CurrentUsername)
 
-        // Chat: let the chat know about the channels
-        // Also sets up the svc for below calls
+	// Chat: let the chat know about the channels
+	// Also sets up the svc for below calls
 	slackchans, err := svc.InitializeChannels()
 	if err == nil {
                 for _, c := range slackchans {
@@ -55,9 +55,8 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 	// Chat: set messages in component
 	chat.SetMessages(msgs)
 
-
 	chat.SetBorderLabel(
-		chat.GetCurrentChannelString(),
+		chat.GetCurrentChannelString() ,
 	)
 
 	// Threads: set threads in component
@@ -75,15 +74,12 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 	// Debug: create the component
 	debug := components.CreateDebugComponent(input.Par.Height)
 
-	// Mode: create the component
-	mode := components.CreateModeComponent()
-
 	view := &View{
 		Config:   config,
 		Input:    input,
-		Threads:  threads,
+//		Threads:  threads,
 		Chat:     chat,
-		Mode:     mode,
+//		Mode:     mode,
 		Debug:    debug,
 	}
 
@@ -94,7 +90,7 @@ func (v *View) Refresh() {
 	termui.Render(
 		v.Input,
 		v.Chat,
-		v.Threads,
-		v.Mode,
+//		v.Threads,
+//		v.Mode,
 	)
 }
