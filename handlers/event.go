@@ -347,7 +347,7 @@ func actionList(ctx *context.AppContext) {
 
 func actionContext(ctx *context.AppContext) {
         currentChan := ctx.View.Chat.GetCurrentChannel()
-	msgs, _, err := ctx.Service.GetMessages(
+	msgs, err := ctx.Service.GetMessages(
                 currentChan.ID,
 		ctx.View.Chat.GetMaxItems(),
 	)
@@ -372,15 +372,15 @@ func actionSend(ctx *context.AppContext) {
 		message := ctx.View.Input.GetText()
 		ctx.View.Input.Clear()
 		termui.Render(ctx.View.Input)
-               
+
                 isChannelSetCmd, abbrev, thabbrev, message := isChannelSet(message)
                 if isChannelSetCmd {
                         ctx.View.Chat.SetChannel(abbrev, thabbrev)
                         ctx.View.Debug.Println( fmt.Sprintf("Set channel to %s", abbrev))
                         ctx.View.Debug.Println( fmt.Sprintf(" channel is now %s", ctx.View.Chat.GetCurrentChannelString()))
                 }
-                        
-                isCmd, commandStr := isCmd(message) 
+
+                isCmd, commandStr := isCmd(message)
                 if isCmd {
                         ctx.View.Debug.Println( fmt.Sprintf("Got command '%s'", commandStr))
                         //TODO not hardcoding
@@ -422,7 +422,7 @@ func actionQuit(ctx *context.AppContext) {
 }
 
 func actionGetMessages(ctx *context.AppContext) {
-	msgs, _, err := ctx.Service.GetMessages(
+	msgs, err := ctx.Service.GetMessages(
                 "TODO: get channel ID",
 		ctx.View.Chat.GetMaxItems(),
 	)

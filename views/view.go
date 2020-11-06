@@ -45,7 +45,7 @@ func CreateView(config *config.Config, svc *service.SlackService) (*View, error)
 
 	// Chat: fill the component
 	// msgs, thr, err := svc.GetMessages(
-	msgs, _, err := svc.GetInitialMessages(
+	msgs, err := svc.GetInitialMessages(
 		chat.GetMaxItems(),
 	)
 	if err != nil {

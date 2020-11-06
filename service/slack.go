@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+        "math/rand"
 	"net/url"
 	"regexp"
 	// "sort"
@@ -268,6 +269,45 @@ func (s *SlackService) SendCommand(channelID string, message string) (bool, erro
 	return false, nil
 }
 
+func (s *SlackService) GetInitialMessages(count int) ([]components.Message, error) {
+        convo := s.Conversations[rand.Intn(len(s.Conversations))]
+        ID := convo.ID
+        return s.GetMessages(ID, count)
+}
+
+// GetMessages will get messages for a channel, group or im channel delimited
+// by a count. It will return the messages, the thread identifiers
+// (as ChannelItem), and and error.
+func (s *SlackService) GetMessages(channelID string, count int) ([]components.Message, error) {
+
+	// https://godoc.org/github.com/nlopes/slack#GetConversationHistoryParameters
+	historyParams := slack.GetConversationHistoryParameters{
+		ChannelID: channelID,
+		Limit:     count,
+		Inclusive: false,
+	}
+
+	history, err := s.Client.GetConversationHistory(&historyParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// Construct the messages
+	var messages []components.Message
+	for _, message := range history.Messages {
+		msg := s.CreateMessage(message, channelID)
+		messages = append(messages, msg)
+	}
+
+	// Reverse the order of the messages, we want the newest in
+	// the last place
+	var messagesReversed []components.Message
+	for i := len(messages) - 1; i >= 0; i-- {
+		messagesReversed = append(messagesReversed, messages[i])
+	}
+
+	return messagesReversed, nil
+}
 
 // CreateMessageByID will construct an array of components.Message with only
 // 1 message, using the message ID (Timestamp).
@@ -671,6 +711,7 @@ func parseEmoji(msg string) string {
 		},
 	)
 }
+
 
 func hashID(input int) string {
 	const base62Alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
