@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html"
 	"log"
-        "math/rand"
 	"net/url"
 	"regexp"
 	// "sort"
@@ -81,7 +80,7 @@ func (s *SlackService) LookupChannel(ID string) (slack.Channel, error) {
 		if conversation.ID == ID {
 			return conversation, nil
 		}
-	}	
+	}
 	return dummy, errors.New("LookupChannel() channel not found")
 }
 
@@ -126,15 +125,15 @@ func (s *SlackService) InitializeChannels() ([]slack.Channel, error) {
 		if err != nil {
 			return nil, err
 		}
-                
+
 		slackChans = append(slackChans, channels...)
 		nextCur = cursor
 	}
 
         for _, c := range slackChans {
-                if c.IsMember { 
+                if c.IsMember {
                          s.Conversations = append(s.Conversations, c)
-                } 
+                }
         }
 
         return s.Conversations, nil
@@ -153,32 +152,6 @@ func (s *SlackService) GetUserPresence(userID string) (string, error) {
 // Set current user presence to active
 func (s *SlackService) SetUserAsActive() {
 	s.Client.SetUserPresence("auto")
-}
-
-// MarkAsRead will set the channel as read
-func (s *SlackService) MarkAsRead(channelItem components.ChannelItem) {
-	switch channelItem.Type {
-	case components.ChannelTypeChannel:
-		s.Client.SetChannelReadMark(
-			channelItem.ID, fmt.Sprintf("%f",
-				float64(time.Now().Unix())),
-		)
-	case components.ChannelTypeGroup:
-		s.Client.SetGroupReadMark(
-			channelItem.ID, fmt.Sprintf("%f",
-				float64(time.Now().Unix())),
-		)
-	case components.ChannelTypeMpIM:
-		s.Client.MarkIMChannel(
-			channelItem.ID, fmt.Sprintf("%f",
-				float64(time.Now().Unix())),
-		)
-	case components.ChannelTypeIM:
-		s.Client.MarkIMChannel(
-			channelItem.ID, fmt.Sprintf("%f",
-				float64(time.Now().Unix())),
-		)
-	}
 }
 
 // SendMessage will send a message to a particular channel
@@ -295,58 +268,6 @@ func (s *SlackService) SendCommand(channelID string, message string) (bool, erro
 	return false, nil
 }
 
-func (s *SlackService) GetInitialMessages(count int) ([]components.Message, []components.ChannelItem, error) {
-        convo := s.Conversations[rand.Intn(len(s.Conversations))]
-        ID := convo.ID
-        return s.GetMessages(ID, count)
-}
-
-// GetMessages will get messages for a channel, group or im channel delimited
-// by a count. It will return the messages, the thread identifiers
-// (as ChannelItem), and and error.
-func (s *SlackService) GetMessages(channelID string, count int) ([]components.Message, []components.ChannelItem, error) {
-
-	// https://godoc.org/github.com/nlopes/slack#GetConversationHistoryParameters
-	historyParams := slack.GetConversationHistoryParameters{
-		ChannelID: channelID,
-		Limit:     count,
-		Inclusive: false,
-	}
-
-	history, err := s.Client.GetConversationHistory(&historyParams)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Construct the messages
-	var messages []components.Message
-	var threads []components.ChannelItem
-	for _, message := range history.Messages {
-		msg := s.CreateMessage(message, channelID)
-		messages = append(messages, msg)
-
-		// FIXME: create boolean isThread
-		if msg.Thread != "" {
-			threads = append(threads, components.ChannelItem{
-				ID:          msg.ID,
-				Name:        msg.Thread,
-				Type:        components.ChannelTypeGroup,
-				StylePrefix: s.Config.Theme.Channel.Prefix,
-				StyleIcon:   s.Config.Theme.Channel.Icon,
-				StyleText:   s.Config.Theme.Channel.Text,
-			})
-		}
-	}
-
-	// Reverse the order of the messages, we want the newest in
-	// the last place
-	var messagesReversed []components.Message
-	for i := len(messages) - 1; i >= 0; i-- {
-		messagesReversed = append(messagesReversed, messages[i])
-	}
-
-	return messagesReversed, threads, nil
-}
 
 // CreateMessageByID will construct an array of components.Message with only
 // 1 message, using the message ID (Timestamp).
@@ -749,18 +670,6 @@ func parseEmoji(msg string) string {
 			return code
 		},
 	)
-}
-
-func (s *SlackService) createChannelItem(chn slack.Channel) components.ChannelItem {
-	return components.ChannelItem{
-		ID:          chn.ID,
-		Name:        chn.Name,
-		Topic:       chn.Topic.Value,
-		UserID:      chn.User,
-		StylePrefix: s.Config.Theme.Channel.Prefix,
-		StyleIcon:   s.Config.Theme.Channel.Icon,
-		StyleText:   s.Config.Theme.Channel.Text,
-	}
 }
 
 func hashID(input int) string {
